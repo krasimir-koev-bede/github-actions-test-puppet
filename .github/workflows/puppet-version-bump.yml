@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment in the format <region3><client3>_<env3>'
+        description: 'Environment in the format <region3><client3><env3> (9 characters, no separators)'
         required: true
       version:
         description: 'Version in format x.y.z.w (separators "." or "-")'
@@ -25,13 +25,14 @@ jobs:
       - name: Parse inputs
         shell: bash
         run: |
-          # Split environment into region+client and env
-          IFS='_' read -r rc env <<< "${{ inputs.environment }}"
-          region="${rc:0:3}"
-          client="${rc:3:3}"
+          # Expect environment as 9 chars: region(3)client(3)env(3)
+          env_str="${{ inputs.environment }}"
+          region="${env_str:0:3}"
+          client="${env_str:3:3}"
+          ENV_NAME="${env_str:6:3}"
           echo "REGION=$region" >> $GITHUB_ENV
           echo "CLIENT=$client" >> $GITHUB_ENV
-          echo "ENV_NAME=$env" >> $GITHUB_ENV
+          echo "ENV_NAME=$ENV_NAME" >> $GITHUB_ENV
           echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
 
       - name: Update puppetVersionEnvOverride in client-region-env file
