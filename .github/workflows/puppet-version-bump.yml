@@ -61,6 +61,12 @@ jobs:
             yq eval -i ".puppetVersion = strenv(VERSION)" "$file"
           fi
 
+      - name: Show git diff of changes
+        shell: bash
+        run: |
+          echo "> [Info] Showing changes"
+          git diff values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml || true
+
       - name: Create branch and push changes
         shell: bash
         run: |
