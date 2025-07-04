@@ -21,8 +21,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
+          token: ${{ secrets.BUMP_TOKEN }}
           fetch-depth: 0
-          persist-credentials: false  # do not use GITHUB_TOKEN for push
 
       - name: Install yq
         run: |
@@ -95,13 +95,10 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          # recompute branch for this step
           BRANCH="puppet-version-bump-$REGION-$CLIENT-$ENV_NAME-$VERSION"
           echo "> [Info] committing changes and pushing to '$BRANCH'"
           git add values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml || true
           git commit -m "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
-          # use PAT for pushing
-          git remote set-url origin https://x-access-token:${{ secrets.BUMP_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin HEAD:$BRANCH
 
       - name: Create Pull Request
