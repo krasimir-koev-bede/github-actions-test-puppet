@@ -10,12 +10,11 @@ on:
         description: 'Version in format x.y.z.w (separators "." or "-")'
         required: true
 
-permissions:
-  contents: read
-
 jobs:
   bump-version:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -99,17 +98,20 @@ jobs:
         run: |
           set -euxo pipefail
           BRANCH=${{ steps.create_branch.outputs.branch }}
-          echo "> [Info] Pushing branch '$BRANCH' using BUMP_TOKEN"
           git push "https://x-access-token:${{ secrets.BUMP_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:$BRANCH
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.BUMP_TOKEN }}
-          base: main                # change 'main' if your default branch is different
-          branch: ${{ steps.create_branch.outputs.branch }}
-          title: "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
-          commit-message: "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
-          body: |
-            This PR bumps the Puppet version to `${{ inputs.version }}` for environment `${{ inputs.environment }}`.
-          update-branch: false 
+      - name: Install GitHub CLI
+        uses: cli/cli-action@v2
+
+      - name: Create Pull Request with gh
+        env:
+          GITHUB_TOKEN: ${{ secrets.BUMP_TOKEN }}
+        run: |
+          set -euxo pipefail
+          BRANCH=${{ steps.create_branch.outputs.branch }}
+          gh auth setup-git
+          gh pr create \
+            --head "$BRANCH" \
+            --base main \
+            --title "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION" \
+            --body "This PR bumps the Puppet version to '$VERSION' for environment '$ENVIRONMENT'."
