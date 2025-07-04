@@ -102,7 +102,7 @@ jobs:
 
       - name: Create Pull Request with gh
         env:
-          GH_TOKEN: ${{ secrets.BUMP_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.BUMP_TOKEN }}
           REGION: ${{ env.REGION }}
           CLIENT: ${{ env.CLIENT }}
           ENV_NAME: ${{ env.ENV_NAME }}
@@ -111,10 +111,8 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          # Authenticate gh CLI
-          gh auth setup-git --scopes repo
 
-          # Create the pull request
+          # Create the pull request using GH_TOKEN auth
           gh pr create \
             --head "$BRANCH" \
             --base main \
