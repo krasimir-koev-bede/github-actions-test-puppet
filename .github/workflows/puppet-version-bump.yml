@@ -10,6 +10,9 @@ on:
         description: 'Version in format x.y.z.w (separators "." or "-")'
         required: true
 
+permissions:
+  contents: read  # allow checkout using the default GITHUB_TOKEN
+
 jobs:
   bump-version:
     runs-on: ubuntu-latest
@@ -18,8 +21,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.BUMP_TOKEN }}
           fetch-depth: 0
+          persist-credentials: false  # do not use GITHUB_TOKEN for push
 
       - name: Install yq
         run: |
@@ -90,9 +93,9 @@ jobs:
       - name: Commit and push changes
         shell: bash
         run: |
-          # update remote URL to use BUMP_TOKEN for push
           git add values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml || true
           git commit -m "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
+          # use PAT for pushing
           git remote set-url origin https://x-access-token:${{ secrets.BUMP_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin HEAD:$BRANCH
 
