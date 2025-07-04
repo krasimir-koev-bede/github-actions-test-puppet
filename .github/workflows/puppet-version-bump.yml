@@ -95,10 +95,12 @@ jobs:
           git commit -m "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
 
       - name: Push branch
-        uses: ad-m/github-push-action@v0.6.0
-        with:
-          github_token: ${{ secrets.BUMP_TOKEN }}
-          branch: ${{ steps.create_branch.outputs.branch }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          BRANCH=${{ steps.create_branch.outputs.branch }}
+          echo "> [Info] Pushing branch '$BRANCH' using BUMP_TOKEN"
+          git push "https://x-access-token:${{ secrets.BUMP_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:$BRANCH
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
