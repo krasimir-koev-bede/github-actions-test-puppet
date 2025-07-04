@@ -98,14 +98,15 @@ jobs:
         uses: ad-m/github-push-action@v0.6.0
         with:
           github_token: ${{ secrets.BUMP_TOKEN }}
-          branch: origin/main
+          branch: ${{ steps.create_branch.outputs.branch }}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.BUMP_TOKEN }}
-          commit-message: "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
-          branch: "${{ steps.create_branch.outputs.branch }}"
+          base: main                # change 'main' if your default branch is different
+          branch: ${{ steps.create_branch.outputs.branch }}
           title: "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
+          commit-message: "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
           body: |
             This PR bumps the Puppet version to `${{ inputs.version }}` for environment `${{ inputs.environment }}`.
