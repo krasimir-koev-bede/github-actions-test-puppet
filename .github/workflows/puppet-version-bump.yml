@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment in the format <region3><client3><env3> (9 characters, no separators)'
+        description: 'Environment in the format <region3><client3><env4> (10 characters, no separators)'
         required: true
       version:
         description: 'Version in format x.y.z.w (separators "." or "-")'
@@ -13,6 +13,7 @@ on:
 jobs:
   bump-version:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -25,11 +26,14 @@ jobs:
       - name: Parse inputs
         shell: bash
         run: |
-          # Expect environment as 9 chars: region(3)client(3)env(3)
+          set -euxo pipefail
+          # Expect environment as 10 chars: region(3)client(3)env(4)
           env_str="${{ inputs.environment }}"
+          echo "> [Debug] raw environment: '$env_str'"
           region="${env_str:0:3}"
           client="${env_str:3:3}"
-          ENV_NAME="${env_str:6:3}"
+          ENV_NAME="${env_str:6:4}"
+          echo "> [Debug] parsed region: '$region', client: '$client', env: '$ENV_NAME'"
           echo "REGION=$region" >> $GITHUB_ENV
           echo "CLIENT=$client" >> $GITHUB_ENV
           echo "ENV_NAME=$ENV_NAME" >> $GITHUB_ENV
@@ -40,6 +44,7 @@ jobs:
         run: |
           file="values/$CLIENT/$REGION/$ENV_NAME.yaml"
           echo "> [Info] Updating $file with version $VERSION"
+          echo "> [Debug] exists? $file -> $( [[ -f $file ]] && echo yes || echo no )"
           if [[ -f "$file" ]]; then
             yq eval -i ".puppetVersionEnvOverride |= with_entries(.value = strenv(VERSION))" "$file"
           fi
@@ -49,6 +54,7 @@ jobs:
         run: |
           file="values/$CLIENT/$ENV_NAME.yaml"
           echo "> [Info] Updating $file with version $VERSION"
+          echo "> [Debug] exists? $file -> $( [[ -f $file ]] && echo yes || echo no )"
           if [[ -f "$file" ]]; then
             yq eval -i ".puppetVersionEnvOverride |= with_entries(.value = strenv(VERSION))" "$file"
           fi
@@ -58,6 +64,7 @@ jobs:
         run: |
           file="values/proxy.yaml"
           echo "> [Info] Updating $file with version $VERSION"
+          echo "> [Debug] exists? $file -> $( [[ -f $file ]] && echo yes || echo no )"
           if [[ -f "$file" ]]; then
             yq eval -i ".puppetVersion = strenv(VERSION)" "$file"
           fi
@@ -66,12 +73,13 @@ jobs:
         shell: bash
         run: |
           echo "> [Info] Showing changes"
-          git diff values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml || true
+          git diff --color=always values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml || true
 
       - name: Create branch and push changes
         shell: bash
         run: |
           BRANCH="puppet-version-bump-$REGION-$CLIENT-$ENV_NAME-$VERSION"
+          echo "> [Info] creating branch '$BRANCH'"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
