@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.BUMP_TOKEN }}
+          fetch-depth: 0
 
       - name: Install yq
         run: |
@@ -75,7 +78,7 @@ jobs:
           echo "> [Info] Showing changes"
           git diff --color=always values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml || true
 
-      - name: Create branch and push changes
+      - name: Create branch
         shell: bash
         run: |
           BRANCH="puppet-version-bump-$REGION-$CLIENT-$ENV_NAME-$VERSION"
@@ -83,14 +86,20 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
+
+      - name: Commit and push changes
+        shell: bash
+        run: |
+          # update remote URL to use BUMP_TOKEN for push
           git add values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml || true
           git commit -m "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
-          git push origin "$BRANCH"
+          git remote set-url origin https://x-access-token:${{ secrets.BUMP_TOKEN }}@github.com/${{ github.repository }}.git
+          git push origin HEAD:$BRANCH
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.BUMP_TOKEN }}
           commit-message: "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
           branch: "puppet-version-bump-$REGION-$CLIENT-$ENV_NAME-$VERSION"
           title: "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
