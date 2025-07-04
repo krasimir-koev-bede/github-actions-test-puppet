@@ -11,7 +11,7 @@ on:
         required: true
 
 permissions:
-  contents: read  # allow checkout using the default GITHUB_TOKEN
+  contents: read
 
 jobs:
   bump-version:
@@ -21,8 +21,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
+          token: ${{ secrets.BUMP_TOKEN }}
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Install yq
         run: |
@@ -33,44 +34,38 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          # Expect environment as 10 chars: region(3)client(3)env(4)
           env_str="${{ inputs.environment }}"
-          echo "> [Debug] raw environment: '$env_str'"
           region="${env_str:0:3}"
           client="${env_str:3:3}"
           ENV_NAME="${env_str:6:4}"
-          echo "> [Debug] parsed region: '$region', client: '$client', env: '$ENV_NAME'"
           echo "REGION=$region" >> $GITHUB_ENV
           echo "CLIENT=$client" >> $GITHUB_ENV
           echo "ENV_NAME=$ENV_NAME" >> $GITHUB_ENV
           echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
 
-      - name: Update puppetVersionEnvOverride in client-region-env file
+      - name: Update client-region-env file
         shell: bash
         run: |
           file="values/$CLIENT/$REGION/$ENV_NAME.yaml"
           echo "> [Info] Updating $file with version $VERSION"
-          echo "> [Debug] exists? $file -> $( [[ -f $file ]] && echo yes || echo no )"
           if [[ -f "$file" ]]; then
             yq eval -i ".puppetVersionEnvOverride |= with_entries(.value = strenv(VERSION))" "$file"
           fi
 
-      - name: Update puppetVersionEnvOverride in client-env file
+      - name: Update client-env file
         shell: bash
         run: |
           file="values/$CLIENT/$ENV_NAME.yaml"
           echo "> [Info] Updating $file with version $VERSION"
-          echo "> [Debug] exists? $file -> $( [[ -f $file ]] && echo yes || echo no )"
           if [[ -f "$file" ]]; then
             yq eval -i ".puppetVersionEnvOverride |= with_entries(.value = strenv(VERSION))" "$file"
           fi
 
-      - name: Update puppetVersion in proxy.yaml
+      - name: Update proxy.yaml
         shell: bash
         run: |
           file="values/proxy.yaml"
           echo "> [Info] Updating $file with version $VERSION"
-          echo "> [Debug] exists? $file -> $( [[ -f $file ]] && echo yes || echo no )"
           if [[ -f "$file" ]]; then
             yq eval -i ".puppetVersion = strenv(VERSION)" "$file"
           fi
@@ -82,11 +77,12 @@ jobs:
           git diff --color=always values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml || true
 
       - name: Create branch
+        id: create_branch
         shell: bash
         run: |
           set -euxo pipefail
           BRANCH="puppet-version-bump-$REGION-$CLIENT-$ENV_NAME-$VERSION"
-          echo "> [Info] creating branch '$BRANCH'"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
@@ -95,23 +91,21 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          BRANCH="puppet-version-bump-$REGION-$CLIENT-$ENV_NAME-$VERSION"
-          echo "> [Info] committing changes on branch '$BRANCH'"
-          git add values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml || true
+          git add values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml
           git commit -m "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
 
-      - name: Push branch using GitHub Push Action
+      - name: Push branch
         uses: ad-m/github-push-action@v0.6.0
         with:
           github_token: ${{ secrets.BUMP_TOKEN }}
-          branch: ${{ env.BRANCH }}
+          branch: ${{ steps.create_branch.outputs.branch }}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.BUMP_TOKEN }}
           commit-message: "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
-          branch: "puppet-version-bump-$REGION-$CLIENT-$ENV_NAME-$VERSION"
+          branch: "${{ steps.create_branch.outputs.branch }}"
           title: "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
           body: |
             This PR bumps the Puppet version to `${{ inputs.version }}` for environment `${{ inputs.environment }}`.
