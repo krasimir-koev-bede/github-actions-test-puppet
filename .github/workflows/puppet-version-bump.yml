@@ -38,6 +38,7 @@ jobs:
         shell: bash
         run: |
           file="values/$CLIENT/$REGION/$ENV_NAME.yaml"
+          echo "> [Info] Updating $file with version $VERSION"
           if [[ -f "$file" ]]; then
             yq eval -i ".puppetVersionEnvOverride |= with_entries(.value = strenv(VERSION))" "$file"
           fi
@@ -46,6 +47,7 @@ jobs:
         shell: bash
         run: |
           file="values/$CLIENT/$ENV_NAME.yaml"
+          echo "> [Info] Updating $file with version $VERSION"
           if [[ -f "$file" ]]; then
             yq eval -i ".puppetVersionEnvOverride |= with_entries(.value = strenv(VERSION))" "$file"
           fi
@@ -54,6 +56,7 @@ jobs:
         shell: bash
         run: |
           file="values/proxy.yaml"
+          echo "> [Info] Updating $file with version $VERSION"
           if [[ -f "$file" ]]; then
             yq eval -i ".puppetVersion = strenv(VERSION)" "$file"
           fi
