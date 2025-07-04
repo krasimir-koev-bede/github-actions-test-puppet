@@ -91,17 +91,20 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
 
-      - name: Commit and push changes
+      - name: Commit changes
         shell: bash
         run: |
           set -euxo pipefail
           BRANCH="puppet-version-bump-$REGION-$CLIENT-$ENV_NAME-$VERSION"
-          echo "> [Info] committing changes and pushing to '$BRANCH'"
+          echo "> [Info] committing changes on branch '$BRANCH'"
           git add values/proxy.yaml values/$CLIENT/$REGION/$ENV_NAME.yaml values/$CLIENT/$ENV_NAME.yaml || true
           git commit -m "[Minor][FAB-000] Puppet version bump $REGION-$CLIENT-$ENV_NAME-$VERSION"
-          # ensure push uses PAT
-          git remote set-url origin https://${{ secrets.BUMP_TOKEN }}@github.com/${{ github.repository }}.git
-          git push origin HEAD:$BRANCH
+
+      - name: Push branch using GitHub Push Action
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.BUMP_TOKEN }}
+          branch: ${{ env.BRANCH }}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
