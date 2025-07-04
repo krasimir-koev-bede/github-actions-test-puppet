@@ -23,6 +23,7 @@ jobs:
         with:
           token: ${{ secrets.BUMP_TOKEN }}
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Install yq
         run: |
